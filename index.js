@@ -1,55 +1,54 @@
 'use strict';
-var path = require('path');
-var childProcess = require('child_process');
-var gutil = require('gulp-util');
-var chalk = require('chalk');
-var through = require('through2');
-var phantomjs = require('phantomjs');
+var path = require( 'path' );
+var childProcess = require( 'child_process' );
+var gutil = require( 'gulp-util' );
+var chalk = require( 'chalk' );
+var through = require( 'through2' );
+var phantomjs = require( 'phantomjs' );
 var binPath = phantomjs.path;
+var fs = require( 'fs' );
 
-module.exports = function(){
-    return through.obj(function (file, enc, cb) {
-        var absolutePath = path.resolve(file.path),
-            isAbsolutePath = absolutePath.indexOf(file.path) >= 0;
+module.exports = function( oOptions ) {
+	return through.obj( function( file, enc, cb ) {
+		var absolutePath = path.resolve( file.path );
+		var isAbsolutePath = absolutePath.indexOf( file.path ) >= 0;
 
-        var childArgs = [
-            path.join(__dirname, 'runner.js'),
-            (isAbsolutePath ? 'file:///' + absolutePath.replace(/\\/g, '/') : file.path)
-        ];
+		var iIndex = file.path.lastIndexOf( '\\' );
+		var sNewFileName = "junit-" + file.path.slice( iIndex + 1 ).replace( ".html", ".xml" );
 
-        if (file.isStream()) {
-            this.emit('error', new gutil.PluginError('gulp-qunit', 'Streaming not supported'));
-            return cb();
-        }
+		var childArgs = [
+			path.join( __dirname, 'runner.js' ),
+			(isAbsolutePath ? 'file:///' + absolutePath.replace( /\\/g, '/' ) : file.path)
+		];
 
-        childProcess.execFile(binPath, childArgs, function(err, stdout, stderr) {
-            gutil.log('Testing ' + file.relative);
+		if( file.isStream() ) {
+			this.emit( 'error', new gutil.PluginError( 'gulp-qunit', 'Streaming not supported' ) );
+			return cb();
+		}
 
-            if (stdout) {
-                stdout = stdout.trim(); // Trim trailing cr-lf
-                gutil.log(stdout);
-            }
+		childProcess.execFile( binPath, childArgs, function( err, stdout, stderr ) {
+			var wrWriteStream = fs.createWriteStream('.\\reports\\' +sNewFileName);
+			gutil.log( 'Testing ' + file.relative );
 
-            var passed = true;
-            if (stderr) {
-                gutil.log(stderr);
-                this.emit('error', new gutil.PluginError('gulp-qunit', stderr));
+			if( stdout ) {
+				stdout = stdout.trim(); // Trim trailing cr-lf
+				gutil.log( stdout );
+				wrWriteStream.write(stdout);
+			}
 
-                passed = false;
-            }
+			if( stderr ) {
+				gutil.log( "eeeeee: " + stderr );
+				this.emit( 'error', new gutil.PluginError( 'gulp-qunit', stderr ) );
+			}
 
-            if (err) {
-                gutil.log('gulp-qunit: ' + chalk.red('✖ ') + 'QUnit assertions failed in ' + chalk.blue(file.relative));
-                this.emit('error', new gutil.PluginError('gulp-qunit', err));
+			if( err ) {
+				gutil.log( 'gulp-qunit: ' + chalk.red( '✖ ' ) + 'QUnit assertions failed in ' + chalk.blue( file.relative ) );
+				this.emit( 'error', new gutil.PluginError( 'gulp-qunit', err ) );
+			}
 
-                passed = false;
-            }
+			this.push( file );
 
-            this.emit('gulp-qunit.finished', {'passed': passed});
-
-            this.push(file);
-
-            return cb();
-        }.bind(this));
-    });
+			return cb();
+		}.bind( this ) );
+	} );
 };

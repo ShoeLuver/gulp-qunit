@@ -122,20 +122,10 @@
 				}
 				name += result.name;
 
-				if (result.failed) {
-					console.log('\n' + 'Test failed: ' + name);
-
-					for (i = 0, len = currentTestAssertions.length; i < len; i++) {
-						console.log('    ' + currentTestAssertions[i]);
-					}
-				}
-
 				currentTestAssertions.length = 0;
 			});
 
 			QUnit.done(function(result) {
-				console.log('\n' + 'Took ' + result.runtime +  'ms to run ' + result.total + ' tests. ' + result.passed + ' passed, ' + result.failed + ' failed.');
-
 				if (typeof window.callPhantom === 'function') {
 					window.callPhantom({
 						'name': 'QUnit.done',
